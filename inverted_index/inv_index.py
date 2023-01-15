@@ -5,16 +5,12 @@ import time
 from collections import defaultdict
 from multiprocessing import Manager
 from multiprocessing.pool import Pool
-from typing import Optional
-
 import numpy as np
 
 
 class InvertedIndex:
-    def __init__(self, thread_no: int = 1, batch_size: int = 50, V: Optional[int] = None):
-        self.V = V
+    def __init__(self, thread_no: int = 1, batch_size: int = 50):
         self.batch_size = batch_size
-
         self._manager = Manager()
         self._split = self._manager.list()
         self._lock = self._manager.Lock()
@@ -29,11 +25,7 @@ class InvertedIndex:
         return self_dict
 
     def process(self, path: str, benchmark: bool = False):
-        if self.V is None:
-            files = self._traverse_dir(path)
-        else:
-            files = self._traverse_dir_alt(path, self.V)
-
+        files = self._traverse_dir(path)
         if self._th_no == 1:
             ret = [self._single_thread(files)]
         else:
@@ -83,23 +75,6 @@ class InvertedIndex:
             f.extend([os.path.join(dirpath, path).replace('\\', '/') for path in filenames])
         return f
 
-    def _traverse_dir_alt(self, path, V):
-        f = []
-        ret = []
-        for (dirpath, dirnames, filenames) in os.walk(path):
-            f.extend([os.path.join(dirpath, dir).replace('\\', '/') for dir in dirnames])
-
-        for d in f:
-            files = os.listdir(d)
-            N = len(files)
-            if N > 10:
-                files = {int(f_name.replace('.txt', '').split('_')[0]): os.path.join(d, f_name) for f_name in files}
-                start = int((N / 50 * (V - 1)) % N)
-                end = int((N / 50 * V) % N)
-                for f_id, f_name in files.items():
-                    if start <= f_id < end:
-                        ret.append(f_name)
-        return ret
 
     def _process_data(self, ret, benchmark=False):
         s = []
